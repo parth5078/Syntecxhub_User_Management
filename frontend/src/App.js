@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 function App() {
+  const [isRegister, setIsRegister] = useState(false);
+
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -14,51 +17,49 @@ function App() {
     !!localStorage.getItem("token")
   );
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
-        }
-      );
+      const url = isRegister
+        ? "http://localhost:5000/api/auth/register"
+        : "http://localhost:5000/api/auth/login";
+
+      const body = isRegister
+        ? { name, email, password }
+        : { email, password };
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.message || "Login failed");
+        alert(data.message || "Something went wrong");
         return;
       }
 
-      // Save token
-      localStorage.setItem("token", data.token);
+      if (isRegister) {
+        alert("Registration successful! Please login.");
 
-      // Save user
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-        setUser(data.user);
-      } else {
-        // Fallback if API doesn't return user
-        const loggedUser = {
-          email: email,
-        };
+        setIsRegister(false);
+        setName("");
+        setEmail("");
+        setPassword("");
 
-        localStorage.setItem("user", JSON.stringify(loggedUser));
-        setUser(loggedUser);
+        return;
       }
 
-      setLoggedIn(true);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-      console.log("Login response:", data);
+      setUser(data.user);
+      setLoggedIn(true);
     } catch (error) {
       alert("Server connection failed");
       console.error(error);
@@ -79,6 +80,7 @@ function App() {
 
     setLoggedIn(false);
     setUser(null);
+    setName("");
     setEmail("");
     setPassword("");
   };
@@ -92,21 +94,13 @@ function App() {
 
           <p>Welcome to User Management 👋</p>
 
-          {user ? (
-            <>
-              <p>
-                <strong>Name:</strong>{" "}
-                {user.name || "Parth Patel"}
-              </p>
+          <p>
+            <strong>Name:</strong> {user?.name}
+          </p>
 
-              <p>
-                <strong>Email:</strong>{" "}
-                {user.email || email}
-              </p>
-            </>
-          ) : (
-            <p>Loading user...</p>
-          )}
+          <p>
+            <strong>Email:</strong> {user?.email}
+          </p>
 
           <button onClick={handleLogout}>Logout</button>
         </div>
@@ -114,15 +108,29 @@ function App() {
     );
   }
 
-  // Login
+  // Login / Register
   return (
     <div className="app">
       <div className="card">
         <h1>User Management</h1>
 
-        <p>Manage your account securely</p>
+        <p>
+          {isRegister
+            ? "Create your account"
+            : "Manage your account securely"}
+        </p>
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
+          {isRegister && (
+            <input
+              type="text"
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          )}
+
           <input
             type="email"
             placeholder="Email"
@@ -139,11 +147,31 @@ function App() {
             required
           />
 
-          <button type="submit">Login</button>
+          <button type="submit">
+            {isRegister ? "Register" : "Login"}
+          </button>
         </form>
 
         <p className="register-text">
-          Don't have an account? <span>Register</span>
+          {isRegister
+            ? "Already have an account? "
+            : "Don't have an account? "}
+
+          <span
+            onClick={() => {
+              setIsRegister(!isRegister);
+              setName("");
+              setEmail("");
+              setPassword("");
+            }}
+            style={{
+              color: "#2563eb",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+          >
+            {isRegister ? "Login" : "Register"}
+          </span>
         </p>
       </div>
     </div>
